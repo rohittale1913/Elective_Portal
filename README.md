@@ -126,7 +126,7 @@ A comprehensive web-based platform for managing student elective course selectio
 
    ```env
 
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/elective-system?retryWrites=true&w=majority**That's it!** 🎉
+   MONGODB_URI= Mongo URL **That's it!** 🎉
 
    JWT_SECRET=your-random-secret-key-here
 
@@ -244,9 +244,9 @@ Make sure you have these installed:
 
 vercel --prod   ```
 
-```   MONGODB_URI=mongodb+srv://your-username:your-password@cluster.mongodb.net/elective-system
+```   MONGODB_URI=Mongo Url
 
-   JWT_SECRET=my-college-project-2025-secret-key
+   JWT_SECRET=your-random-secret-key
 
 **Backend on Render** (same as Method 1)   ```
 
@@ -268,13 +268,12 @@ vercel --prod   ```
 
 # MongoDB Connection (REQUIRED)   - Login with default admin (see below)
 
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/elective-system
-
+MONGODB_URI=Mongo URL
 ### For Mac/Linux:
 
 # JWT Secret for Authentication (REQUIRED)
 
-JWT_SECRET=your-random-secret-key```bash
+JWT_SECRET=your-random-secret-key
 
 # Install Node.js (if not installed)
 
