@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Section Data Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 30px; }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 10px 5px;
+            border-radius: 4px;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .success { color: #4ec9b0; }
+        .error { color: #f48771; }
+        .warning { color: #dcdcaa; }
+        pre {
+            background: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 3px solid #007acc;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 2px solid #333;
+        }
+        .status-box {
+            background: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #252526;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        th {
+            background: #0e639c;
+            color: white;
+        }
+        .section-ok { color: #4ec9b0; }
+        .section-missing { color: #f48771; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Section Data Diagnostic Tool</h1>
+    <p>This tool checks if the backend API is returning section data correctly.</p>
+
+    <div class="status-box">
+        <h2>Step 1: Login</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@college.edu" style="padding: 8px; width: 250px; margin-right: 10px;">
+        <input type="password" id="password" placeholder="Password" value="admin123" style="padding: 8px; width: 150px; margin-right: 10px;">
+        <button onclick="login()">Login</button>
+        <div id="loginStatus"></div>
+    </div>
+
+    <div class="status-box">
+        <h2>Step 2: Fetch Users from API</h2>
+        <button onclick="fetchUsers()" id="fetchBtn" disabled>Fetch Users</button>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <div id="fetchStatus"></div>
+    </div>
+
+    <div class="status-box">
+        <h2>API Response Log:</h2>
+        <div id="logs"></div>
+    </div>
+
+    <div class="status-box">
+        <h2>Students with Section Data:</h2>
+        <div id="studentTable"></div>
+    </div>
+
+    <script>
+        let authToken = null;
+        const API_BASE = 'http://localhost:5000/api';
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+            document.getElementById('studentTable').innerHTML = '';
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            log('🔐 Attempting login...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Login failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                authToken = data.token;
+                
+                log('✅ Login successful!', 'success');
+                log(`Token: ${authToken.substring(0, 20)}...`, 'info');
+                
+                document.getElementById('loginStatus').innerHTML = `
+                    <span class="success">✅ Logged in as: ${data.user.email}</span>
+                `;
+                document.getElementById('fetchBtn').disabled = false;
+                
+            } catch (error) {
+                log(`❌ Login failed: ${error.message}`, 'error');
+                document.getElementById('loginStatus').innerHTML = `
+                    <span class="error">❌ Login failed: ${error.message}</span>
+                `;
+            }
+        }
+
+        async function fetchUsers() {
+            if (!authToken) {
+                log('❌ No auth token. Please login first.', 'error');
+                return;
+            }
+
+            log('📡 Fetching users from API...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Fetch failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const users = data.users || [];
+                const students = users.filter(u => u.role === 'student');
+                
+                log(`✅ Received ${users.length} users (${students.length} students)`, 'success');
+                
+                // Analyze section data
+                const withSection = students.filter(s => s.section);
+                const withoutSection = students.filter(s => !s.section);
+                
+                log(`📊 Section Analysis:`, 'info');
+                log(`  - Students WITH section: ${withSection.length}`, withSection.length > 0 ? 'success' : 'error');
+                log(`  - Students WITHOUT section: ${withoutSection.length}`, withoutSection.length > 0 ? 'warning' : 'success');
+                
+                // Show section distribution
+                const sectionCounts = students.reduce((acc, s) => {
+                    const section = s.section || 'MISSING';
+                    acc[section] = (acc[section] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                log(`📈 Section Distribution: ${JSON.stringify(sectionCounts)}`, 'info');
+                
+                // Show raw data for first user
+                if (students.length > 0) {
+                    log(`🔍 Sample user object (first student):`, 'info');
+                    log(JSON.stringify(students[0], null, 2), 'info');
+                }
+                
+                // Display table
+                displayStudentTable(students);
+                
+                document.getElementById('fetchStatus').innerHTML = `
+                    <span class="success">✅ Loaded ${students.length} students. Check table below.</span>
+                `;
+                
+            } catch (error) {
+                log(`❌ Fetch failed: ${error.message}`, 'error');
+                document.getElementById('fetchStatus').innerHTML = `
+                    <span class="error">❌ Fetch failed: ${error.message}</span>
+                `;
+            }
+        }
+
+        function displayStudentTable(students) {
+            const container = document.getElementById('studentTable');
+            
+            if (students.length === 0) {
+                container.innerHTML = '<p class="warning">No students found.</p>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Roll No</th>
+                            <th>Department</th>
+                            <th>Semester</th>
+                            <th>Section</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            students.forEach((student, index) => {
+                const hasSection = student.section && student.section !== null && student.section !== '';
+                const sectionDisplay = hasSection ? student.section : 'MISSING';
+                const statusClass = hasSection ? 'section-ok' : 'section-missing';
+                const statusIcon = hasSection ? '✅' : '❌';
+                
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.name}</td>
+                        <td>${student.rollNumber || 'N/A'}</td>
+                        <td>${student.department || 'N/A'}</td>
+                        <td>${student.semester || 'N/A'}</td>
+                        <td class="${statusClass}">${sectionDisplay}</td>
+                        <td>${statusIcon}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Auto-login if credentials are filled
+        window.addEventListener('load', () => {
+            log('🚀 Diagnostic tool loaded. Ready to test.', 'success');
+            log('📝 Instructions:', 'info');
+            log('  1. Click "Login" to authenticate', 'info');
+            log('  2. Click "Fetch Users" to get data from API', 'info');
+            log('  3. Check the table to see section data', 'info');
+        });
+    </script>
+</body>
+</html>

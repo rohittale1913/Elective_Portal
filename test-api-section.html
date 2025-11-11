@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Section Field</title>
+</head>
+<body>
+    <h1>Testing /api/users Section Field</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing...\n\n';
+            
+            try {
+                // Get auth token from localStorage
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    output.textContent += '❌ No auth token found!\n';
+                    output.textContent += 'Please login first at http://localhost:5173\n';
+                    return;
+                }
+                
+                output.textContent += '✅ Found auth token\n\n';
+                
+                // Fetch users from API
+                output.textContent += '📡 Fetching from: http://localhost:5000/api/users\n\n';
+                const response = await fetch('http://localhost:5000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    output.textContent += `❌ HTTP ${response.status}: ${response.statusText}\n`;
+                    return;
+                }
+                
+                const data = await response.json();
+                output.textContent += `✅ API Response received\n`;
+                output.textContent += `📊 Total users: ${data.users?.length || 0}\n\n`;
+                
+                // Filter students
+                const students = data.users?.filter(u => u.role === 'student') || [];
+                output.textContent += `🎓 Students found: ${students.length}\n\n`;
+                
+                // Check first 5 students for section field
+                output.textContent += '🔍 Checking section field for first 5 students:\n\n';
+                students.slice(0, 5).forEach((student, index) => {
+                    output.textContent += `${index + 1}. ${student.name || 'Unknown'}\n`;
+                    output.textContent += `   Email: ${student.email}\n`;
+                    output.textContent += `   Section value: "${student.section}"\n`;
+                    output.textContent += `   Section type: ${typeof student.section}\n`;
+                    output.textContent += `   Has section property: ${student.hasOwnProperty('section')}\n`;
+                    output.textContent += `   Object keys: ${Object.keys(student).join(', ')}\n`;
+                    output.textContent += `\n`;
+                });
+                
+                // Section distribution
+                const sectionCounts = students.reduce((acc, s) => {
+                    const section = s.section || 'UNDEFINED';
+                    acc[section] = (acc[section] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                output.textContent += '\n📈 Section distribution:\n';
+                Object.entries(sectionCounts).forEach(([section, count]) => {
+                    output.textContent += `   ${section}: ${count}\n`;
+                });
+                
+                // Raw JSON of first student
+                if (students.length > 0) {
+                    output.textContent += '\n📄 RAW JSON of first student:\n';
+                    output.textContent += JSON.stringify(students[0], null, 2);
+                }
+                
+            } catch (error) {
+                output.textContent += `\n❌ Error: ${error.message}\n`;
+                output.textContent += error.stack;
+            }
+        }
+    </script>
+</body>
+</html>

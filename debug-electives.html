@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Student Electives</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #da190b;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border-left: 4px solid #4CAF50;
+        }
+        .count {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #4CAF50;
+            color: white;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Student Electives Debug Dashboard</h1>
+    
+    <div class="section">
+        <h2>1. Auth Token Status</h2>
+        <div id="authStatus"></div>
+        <button onclick="checkAuth()">🔄 Refresh Auth Status</button>
+        <button onclick="loginAsAdmin()" class="info">🔑 Login as Admin</button>
+        <button onclick="clearAuth()" class="danger">🗑️ Clear Auth Token</button>
+    </div>
+
+    <div class="section">
+        <h2>2. LocalStorage Data</h2>
+        <div id="localStorageStatus"></div>
+        <button onclick="checkLocalStorage()">🔄 Refresh Storage Status</button>
+        <button onclick="clearLocalStorage()" class="danger">🗑️ Clear All LocalStorage</button>
+    </div>
+
+    <div class="section">
+        <h2>3. API Test</h2>
+        <div id="apiStatus"></div>
+        <button onclick="testAPI()">🧪 Test API Connection</button>
+        <button onclick="fetchSelections()">📊 Fetch Student Selections</button>
+    </div>
+
+    <div class="section">
+        <h2>4. Database Status</h2>
+        <div id="dbStatus"></div>
+        <button onclick="checkDatabase()">🗄️ Check Database</button>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        async function loginAsAdmin() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@system.com',
+                        password: 'admin123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.token) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('userRole', data.user.role);
+                    localStorage.setItem('userId', data.user.id);
+                    
+                    showStatus('authStatus', 'success', '✅ Logged in successfully as ' + data.user.role);
+                    checkAuth();
+                } else {
+                    showStatus('authStatus', 'error', '❌ Login failed: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                showStatus('authStatus', 'error', '❌ Login error: ' + error.message);
+            }
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const role = localStorage.getItem('userRole');
+            
+            let html = '';
+            
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    html += '<div class="status success">';
+                    html += '<strong>✅ Auth Token Found</strong><br>';
+                    html += 'Role: <strong>' + (payload.role || role) + '</strong><br>';
+                    html += 'User ID: ' + payload.userId + '<br>';
+                    html += 'Token Length: ' + token.length + ' chars<br>';
+                    html += 'Token Preview: ' + token.substring(0, 40) + '...<br>';
+                    html += '</div>';
+                } catch (e) {
+                    html += '<div class="status error">❌ Token exists but invalid: ' + e.message + '</div>';
+                }
+            } else {
+                html += '<div class="status error">';
+                html += '<strong>❌ NO AUTH TOKEN FOUND</strong><br>';
+                html += 'You must login to see student data.<br>';
+                html += 'Click "Login as Admin" button above.';
+                html += '</div>';
+            }
+            
+            document.getElementById('authStatus').innerHTML = html;
+        }
+
+        function clearAuth() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('userId');
+            showStatus('authStatus', 'warning', '⚠️ Auth token cleared');
+            checkAuth();
+        }
+
+        function checkLocalStorage() {
+            let html = '';
+            
+            const studentElectives = localStorage.getItem('studentElectives');
+            const electives = localStorage.getItem('electives');
+            const users = localStorage.getItem('users');
+            
+            html += '<div class="status info">';
+            html += '<strong>📦 LocalStorage Contents:</strong><br><br>';
+            
+            if (studentElectives) {
+                try {
+                    const parsed = JSON.parse(studentElectives);
+                    html += '<div class="count">' + parsed.length + '</div> student electives stored<br>';
+                    
+                    if (parsed.length > 0) {
+                        html += '<br><strong>Sample:</strong><pre>' + JSON.stringify(parsed[0], null, 2) + '</pre>';
+                    }
+                } catch (e) {
+                    html += '<span class="error">❌ Invalid studentElectives data</span><br>';
+                }
+            } else {
+                html += '❌ No studentElectives in localStorage<br>';
+            }
+            
+            html += '<br>';
+            
+            if (electives) {
+                const parsed = JSON.parse(electives);
+                html += '✅ ' + parsed.length + ' electives stored<br>';
+            } else {
+                html += '❌ No electives in localStorage<br>';
+            }
+            
+            if (users) {
+                const parsed = JSON.parse(users);
+                html += '✅ ' + parsed.length + ' users stored<br>';
+            } else {
+                html += '❌ No users in localStorage<br>';
+            }
+            
+            html += '</div>';
+            
+            document.getElementById('localStorageStatus').innerHTML = html;
+        }
+
+        function clearLocalStorage() {
+            if (confirm('Are you sure? This will clear ALL localStorage data.')) {
+                localStorage.clear();
+                showStatus('localStorageStatus', 'warning', '⚠️ LocalStorage cleared');
+                checkLocalStorage();
+            }
+        }
+
+        async function testAPI() {
+            let html = '<div class="status info">🧪 Testing API connection...</div>';
+            document.getElementById('apiStatus').innerHTML = html;
+            
+            try {
+                const response = await fetch(`${API_BASE}/electives`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus('apiStatus', 'success', '✅ API Connected! Found ' + data.length + ' electives');
+                } else {
+                    showStatus('apiStatus', 'error', '❌ API Error: ' + response.status);
+                }
+            } catch (error) {
+                showStatus('apiStatus', 'error', '❌ Cannot connect to API: ' + error.message + '<br>Make sure server is running on port 5000');
+            }
+        }
+
+        async function fetchSelections() {
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                showStatus('apiStatus', 'error', '❌ No auth token! Login first.');
+                return;
+            }
+            
+            let html = '<div class="status info">📊 Fetching student selections...</div>';
+            document.getElementById('apiStatus').innerHTML = html;
+            
+            try {
+                // Try admin endpoint first
+                const response = await fetch(`${API_BASE}/student/all-selections`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.selections) {
+                    html = '<div class="status success">';
+                    html += '<strong>✅ Successfully fetched selections!</strong><br>';
+                    html += '<div class="count">' + data.selections.length + '</div> student selections found<br><br>';
+                    
+                    // Group by student
+                    const byStudent = {};
+                    data.selections.forEach(sel => {
+                        if (!byStudent[sel.studentId]) {
+                            byStudent[sel.studentId] = {
+                                name: sel.studentName || 'Unknown',
+                                count: 0
+                            };
+                        }
+                        byStudent[sel.studentId].count++;
+                    });
+                    
+                    html += '<table><tr><th>Student ID</th><th>Name</th><th>Selections</th></tr>';
+                    Object.entries(byStudent).slice(0, 20).forEach(([id, info]) => {
+                        html += `<tr><td>${id.substring(0, 16)}...</td><td>${info.name}</td><td>${info.count}</td></tr>`;
+                    });
+                    html += '</table>';
+                    
+                    html += '<br><strong>💾 Saving to localStorage...</strong>';
+                    localStorage.setItem('studentElectives', JSON.stringify(data.selections));
+                    html += '<br>✅ Saved!';
+                    
+                    html += '</div>';
+                } else {
+                    html = '<div class="status error">❌ API Error: ' + (data.error || 'Unknown error') + '</div>';
+                }
+                
+                document.getElementById('apiStatus').innerHTML = html;
+                checkLocalStorage();
+            } catch (error) {
+                showStatus('apiStatus', 'error', '❌ Request failed: ' + error.message);
+            }
+        }
+
+        async function checkDatabase() {
+            showStatus('dbStatus', 'info', '🗄️ This requires running: node check-student-electives.cjs in terminal');
+        }
+
+        function showStatus(elementId, type, message) {
+            document.getElementById(elementId).innerHTML = 
+                '<div class="status ' + type + '">' + message + '</div>';
+        }
+
+        // Auto-check on page load
+        window.onload = function() {
+            checkAuth();
+            checkLocalStorage();
+        };
+    </script>
+</body>
+</html>

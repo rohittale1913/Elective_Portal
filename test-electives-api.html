@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Student Electives API</title>
+</head>
+<body>
+    <h1>Testing Student Electives API</h1>
+    <button onclick="testAPI()">Test API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testAPI() {
+            const output = document.getElementById('output');
+            output.textContent = 'Testing...\n\n';
+            
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    output.textContent += '❌ No auth token found!\n';
+                    return;
+                }
+                
+                output.textContent += '✅ Found auth token\n\n';
+                
+                // Test 1: Fetch all selections
+                output.textContent += '📡 Fetching all selections...\n';
+                const response = await fetch('http://localhost:5000/api/student/all-selections', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    output.textContent += `❌ HTTP ${response.status}\n`;
+                    return;
+                }
+                
+                const data = await response.json();
+                output.textContent += `✅ Response received\n`;
+                output.textContent += `📊 Total selections: ${data.selections?.length || 0}\n\n`;
+                
+                if (data.selections && data.selections.length > 0) {
+                    output.textContent += '📋 First 5 selections:\n\n';
+                    data.selections.slice(0, 5).forEach((sel, i) => {
+                        output.textContent += `${i + 1}. Selection:\n`;
+                        output.textContent += `   _id: ${sel._id}\n`;
+                        output.textContent += `   studentId: ${sel.studentId}\n`;
+                        output.textContent += `   studentId type: ${typeof sel.studentId}\n`;
+                        output.textContent += `   electiveId type: ${typeof sel.electiveId}\n`;
+                        output.textContent += `   electiveId: ${JSON.stringify(sel.electiveId)}\n`;
+                        output.textContent += `   semester: ${sel.semester}\n`;
+                        output.textContent += `   studentName: ${sel.studentName}\n`;
+                        output.textContent += `\n`;
+                    });
+                    
+                    // Test 2: Check localStorage
+                    output.textContent += '\n📦 Checking localStorage...\n';
+                    const stored = localStorage.getItem('studentElectives');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        output.textContent += `   Stored selections: ${parsed.length}\n`;
+                        output.textContent += `   First selection: ${JSON.stringify(parsed[0], null, 2)}\n`;
+                    } else {
+                        output.textContent += '   No selections in localStorage\n';
+                    }
+                }
+                
+            } catch (error) {
+                output.textContent += `\n❌ Error: ${error.message}\n`;
+            }
+        }
+    </script>
+</body>
+</html>

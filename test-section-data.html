@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test - Section Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .student {
+            border-left: 4px solid #3b82f6;
+            padding-left: 15px;
+            margin: 10px 0;
+        }
+        .section-a { border-left-color: #10b981; }
+        .section-b { border-left-color: #f59e0b; }
+        .section-c { border-left-color: #ef4444; }
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background: #efe;
+            color: #0a0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 API Section Data Test</h1>
+    
+    <div class="card">
+        <h2>Step 1: Get Auth Token</h2>
+        <p>Your current auth token:</p>
+        <pre id="tokenDisplay">Not found</pre>
+        <button onclick="loadToken()">Refresh Token</button>
+    </div>
+
+    <div class="card">
+        <h2>Step 2: Test API</h2>
+        <button onclick="testAPI()">🚀 Test /api/users Endpoint</button>
+        <div id="apiResult" style="margin-top: 20px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>Step 3: DataContext State</h2>
+        <button onclick="checkDataContext()">Check React Context Data</button>
+        <div id="contextResult" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function loadToken() {
+            const token = localStorage.getItem('authToken');
+            document.getElementById('tokenDisplay').textContent = token || 'No token found - Please login first!';
+        }
+
+        async function testAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p>⏳ Loading...</p>';
+
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                resultDiv.innerHTML = '<div class="error">❌ No auth token found! Please login first.</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:5000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    resultDiv.innerHTML = `<div class="error">❌ API Error: ${response.status} ${response.statusText}</div>`;
+                    return;
+                }
+
+                const data = await response.json();
+                const students = data.users?.filter(u => u.role === 'student') || [];
+
+                // Section distribution
+                const sectionDist = students.reduce((acc, s) => {
+                    const section = s.section || 'UNDEFINED';
+                    acc[section] = (acc[section] || 0) + 1;
+                    return acc;
+                }, {});
+
+                let html = `
+                    <div class="success">✅ API Response Received!</div>
+                    <h3>📊 Statistics</h3>
+                    <ul>
+                        <li>Total users: ${data.users?.length || 0}</li>
+                        <li>Students: ${students.length}</li>
+                        <li>Section distribution: ${JSON.stringify(sectionDist)}</li>
+                    </ul>
+                    <h3>👥 First 5 Students</h3>
+                `;
+
+                students.slice(0, 5).forEach((student, index) => {
+                    const sectionClass = student.section ? `section-${student.section.toLowerCase()}` : '';
+                    html += `
+                        <div class="student ${sectionClass}">
+                            <strong>${index + 1}. ${student.name}</strong><br>
+                            <strong>Section:</strong> "${student.section}" (type: ${typeof student.section})<br>
+                            <strong>Has section property:</strong> ${Object.prototype.hasOwnProperty.call(student, 'section')}<br>
+                            Roll: ${student.rollNumber}, Dept: ${student.department}, Sem: ${student.semester}
+                        </div>
+                    `;
+                });
+
+                html += `<h3>🔍 Raw JSON (first student)</h3><pre>${JSON.stringify(students[0], null, 2)}</pre>`;
+                
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function checkDataContext() {
+            const resultDiv = document.getElementById('contextResult');
+            
+            const storedStudents = localStorage.getItem('students');
+            if (!storedStudents) {
+                resultDiv.innerHTML = '<div class="error">❌ No students data in localStorage</div>';
+                return;
+            }
+
+            try {
+                const students = JSON.parse(storedStudents);
+                
+                const sectionDist = students.reduce((acc, s) => {
+                    const section = s.section || 'UNDEFINED';
+                    acc[section] = (acc[section] || 0) + 1;
+                    return acc;
+                }, {});
+
+                let html = `
+                    <div class="success">✅ Found students in localStorage</div>
+                    <h3>📊 Statistics</h3>
+                    <ul>
+                        <li>Total students: ${students.length}</li>
+                        <li>Section distribution: ${JSON.stringify(sectionDist)}</li>
+                    </ul>
+                    <h3>👥 First 5 Students in Cache</h3>
+                `;
+
+                students.slice(0, 5).forEach((student, index) => {
+                    const sectionClass = student.section ? `section-${student.section.toLowerCase()}` : '';
+                    html += `
+                        <div class="student ${sectionClass}">
+                            <strong>${index + 1}. ${student.name}</strong><br>
+                            <strong>Section:</strong> "${student.section}" (type: ${typeof student.section})<br>
+                            Roll: ${student.rollNumber}, Dept: ${student.department}
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <h3>🔍 Raw JSON (first student)</h3>
+                    <pre>${JSON.stringify(students[0], null, 2)}</pre>
+                    <button onclick="clearCache()">🗑️ Clear Cache & Reload</button>
+                `;
+                
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error parsing: ${error.message}</div>`;
+            }
+        }
+
+        function clearCache() {
+            if (confirm('This will clear all cached data and reload the page. Continue?')) {
+                localStorage.removeItem('students');
+                localStorage.removeItem('studentElectives');
+                alert('Cache cleared! Click OK to reload.');
+                location.reload();
+            }
+        }
+
+        // Auto-load token on page load
+        loadToken();
+    </script>
+
+    <div class="card">
+        <h2>📝 Instructions</h2>
+        <ol>
+            <li>Make sure you're logged in to the app</li>
+            <li>Check if your auth token appears above</li>
+            <li>Click "Test /api/users Endpoint" to see what API returns</li>
+            <li>Click "Check React Context Data" to see cached data</li>
+            <li>Compare the two results - they should match!</li>
+        </ol>
+    </div>
+</body>
+</html>

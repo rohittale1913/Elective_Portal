@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Login & Data Loader</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            margin: 10px 0;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .big-button {
+            font-size: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .big-button:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .step h3 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        .count {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+            margin: 20px 0;
+        }
+        #output {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .progress {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            background: #e0e0e0;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚀 One-Click Student Data Loader</h1>
+        
+        <div id="currentStatus"></div>
+
+        <div class="step">
+            <h3>📋 What This Does:</h3>
+            <p>This tool will automatically:</p>
+            <ol>
+                <li>Login as admin</li>
+                <li>Fetch all 21 students from database</li>
+                <li>Fetch all 99 elective selections</li>
+                <li>Save everything to localStorage</li>
+                <li>Redirect you to the admin students page</li>
+            </ol>
+        </div>
+
+        <button class="big-button" onclick="autoFix()" id="fixButton">
+            🎯 FIX EVERYTHING NOW
+        </button>
+
+        <div class="progress" id="progressContainer" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <div id="output" style="display: none;"></div>
+
+        <div style="margin-top: 20px;">
+            <button onclick="checkStatus()" style="background: #2196F3;">🔍 Check Current Status</button>
+            <button onclick="clearAll()" style="background: #f44336;">🗑️ Clear All Data</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let output = '';
+
+        function log(message, type = 'info') {
+            output += message + '\n';
+            document.getElementById('output').innerText = output;
+            document.getElementById('output').style.display = 'block';
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+        function updateProgress(percent, text) {
+            const fill = document.getElementById('progressFill');
+            fill.style.width = percent + '%';
+            fill.innerText = text || percent + '%';
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('currentStatus');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        async function checkStatus() {
+            output = '';
+            log('🔍 Checking current status...\n');
+
+            const token = localStorage.getItem('authToken');
+            const students = localStorage.getItem('students');
+            const studentElectives = localStorage.getItem('studentElectives');
+
+            log('📊 Current LocalStorage Status:');
+            log('─────────────────────────────────');
+            log('Auth Token: ' + (token ? '✅ EXISTS (' + token.substring(0, 30) + '...)' : '❌ MISSING'));
+            
+            if (students) {
+                const parsed = JSON.parse(students);
+                log('Students: ✅ ' + parsed.length + ' students stored');
+            } else {
+                log('Students: ❌ MISSING');
+            }
+
+            if (studentElectives) {
+                const parsed = JSON.parse(studentElectives);
+                log('Student Electives: ✅ ' + parsed.length + ' selections stored');
+            } else {
+                log('Student Electives: ❌ MISSING');
+            }
+
+            log('\n' + (token && students && studentElectives ? 
+                '✅ All data present! You should see students now.' : 
+                '❌ Missing data! Click "FIX EVERYTHING NOW" to load data.'));
+        }
+
+        async function autoFix() {
+            output = '';
+            const button = document.getElementById('fixButton');
+            button.disabled = true;
+            button.innerText = '⏳ Working...';
+            
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.style.display = 'block';
+            updateProgress(0, 'Starting...');
+
+            try {
+                // Step 1: Login
+                log('🔐 Step 1/4: Logging in as admin...');
+                updateProgress(25, 'Logging in...');
+                
+                const loginResponse = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@system.com',
+                        password: 'admin123'
+                    })
+                });
+
+                const loginData = await loginResponse.json();
+                
+                if (!loginData.token) {
+                    throw new Error('Login failed: ' + (loginData.message || 'No token received'));
+                }
+
+                const token = loginData.token;
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('userRole', loginData.user.role);
+                localStorage.setItem('userId', loginData.user.id);
+                
+                log('✅ Login successful!');
+                log('   Role: ' + loginData.user.role);
+                log('   User: ' + loginData.user.name + '\n');
+
+                // Step 2: Fetch Users
+                log('👥 Step 2/4: Fetching students...');
+                updateProgress(50, 'Loading students...');
+                
+                const usersResponse = await fetch(`${API_BASE}/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const usersData = await usersResponse.json();
+                
+                if (!usersData.success || !usersData.users) {
+                    throw new Error('Failed to fetch users');
+                }
+
+                const students = usersData.users.filter(u => u.role === 'student');
+                localStorage.setItem('students', JSON.stringify(students));
+                localStorage.setItem('users', JSON.stringify(usersData.users));
+                
+                log('✅ Loaded ' + students.length + ' students');
+                log('   Sections: A, B, C');
+                log('   Department: Artificial Intelligence\n');
+
+                // Step 3: Fetch Student Selections
+                log('📊 Step 3/4: Fetching elective selections...');
+                updateProgress(75, 'Loading selections...');
+                
+                const selectionsResponse = await fetch(`${API_BASE}/student/all-selections`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const selectionsData = await selectionsResponse.json();
+                
+                if (!selectionsData.success || !selectionsData.selections) {
+                    throw new Error('Failed to fetch selections');
+                }
+
+                localStorage.setItem('studentElectives', JSON.stringify(selectionsData.selections));
+                
+                log('✅ Loaded ' + selectionsData.selections.length + ' elective selections\n');
+
+                // Step 4: Complete
+                updateProgress(100, 'Complete! ✅');
+                
+                log('═══════════════════════════════════');
+                log('🎉 SUCCESS! All data loaded!');
+                log('═══════════════════════════════════');
+                log('\n📊 Summary:');
+                log('  • Auth Token: ✅ Saved');
+                log('  • Students: ✅ ' + students.length + ' loaded');
+                log('  • Selections: ✅ ' + selectionsData.selections.length + ' loaded');
+                log('\n🚀 Redirecting to admin students page in 3 seconds...');
+
+                showStatus(
+                    `<strong>✅ SUCCESS!</strong><br>
+                    Loaded ${students.length} students and ${selectionsData.selections.length} elective selections.<br>
+                    Redirecting...`,
+                    'success'
+                );
+
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:5173/admin/students';
+                }, 3000);
+
+            } catch (error) {
+                log('\n❌ ERROR: ' + error.message);
+                showStatus('❌ Error: ' + error.message + '<br>Make sure backend server is running on port 5000', 'error');
+                button.disabled = false;
+                button.innerText = '🔄 Try Again';
+                updateProgress(0, 'Failed');
+            }
+        }
+
+        function clearAll() {
+            if (confirm('Clear all localStorage data? You will need to login again.')) {
+                localStorage.clear();
+                showStatus('⚠️ All data cleared. Click "FIX EVERYTHING NOW" to reload.', 'warning');
+                output = '';
+                document.getElementById('output').style.display = 'none';
+            }
+        }
+
+        // Check status on page load
+        window.onload = checkStatus;
+    </script>
+</body>
+</html>

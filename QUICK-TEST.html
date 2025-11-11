@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QUICK SECTION TEST</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 10px; }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        pre { background: #111; padding: 10px; border: 1px solid #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 SECTION FIELD TEST</h1>
+    <button onclick="testAPI()">TEST API NOW</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                // Login
+                const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'admin@college.edu', password: 'admin123' })
+                });
+                const { token } = await loginRes.json();
+                
+                // Get users
+                const usersRes = await fetch('http://localhost:5000/api/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const { users } = await usersRes.json();
+                
+                const students = users.filter(u => u.role === 'student');
+                const withSection = students.filter(s => s.section);
+                const withoutSection = students.filter(s => !s.section);
+                
+                let html = `
+                    <h2 class="success">✅ API WORKING!</h2>
+                    <p>Total Students: ${students.length}</p>
+                    <p class="success">WITH Section: ${withSection.length}</p>
+                    <p class="${withoutSection.length > 0 ? 'error' : 'success'}">WITHOUT Section: ${withoutSection.length}</p>
+                    
+                    <h3>Section Distribution:</h3>
+                    <pre>${JSON.stringify(
+                        students.reduce((acc, s) => {
+                            const sec = s.section || 'MISSING';
+                            acc[sec] = (acc[sec] || 0) + 1;
+                            return acc;
+                        }, {}),
+                        null,
+                        2
+                    )}</pre>
+                    
+                    <h3>Sample Students:</h3>
+                `;
+                
+                students.slice(0, 5).forEach(s => {
+                    html += `<p>${s.name} (${s.rollNumber}): <strong>${s.section || 'MISSING'}</strong></p>`;
+                });
+                
+                result.innerHTML = html;
+                
+                if (withSection.length > 0) {
+                    result.innerHTML += '<h2 class="success">✅✅✅ SECTIONS ARE WORKING! ✅✅✅</h2><p>Now refresh your admin panel (Ctrl+Shift+R)</p>';
+                } else {
+                    result.innerHTML += '<h2 class="error">❌ SECTIONS STILL MISSING</h2>';
+                }
+                
+            } catch (error) {
+                result.innerHTML = `<p class="error">ERROR: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

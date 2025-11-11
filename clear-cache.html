@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Student Data Cache</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        button.success {
+            background: #16a34a;
+        }
+        button.success:hover {
+            background: #15803d;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .success-msg {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        ul {
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Student Section Display Issue</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Problem:</strong> Student reports showing "Not Assigned" for sections even though data exists in database.
+        </div>
+
+        <div class="info">
+            <strong>💡 Root Cause:</strong> The frontend has cached old student data in localStorage before the backend was fixed to return section fields.
+        </div>
+
+        <h2>Solution Steps:</h2>
+        
+        <div style="margin: 20px 0;">
+            <h3>Step 1: Clear Cached Data</h3>
+            <p>Click the button below to clear all cached student data from your browser:</p>
+            <button onclick="clearCache()">🗑️ Clear Student Cache</button>
+            <div id="cache-status"></div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>Step 2: Refresh the Application</h3>
+            <p>After clearing the cache, refresh the page or click:</p>
+            <button class="success" onclick="location.reload()">🔄 Reload Page</button>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <h3>Step 3: In Admin Panel</h3>
+            <ul>
+                <li>Go to <strong>Student Management</strong> page</li>
+                <li>Click the <strong>Refresh</strong> button (🔄 icon)</li>
+                <li>Generate a new report</li>
+                <li>Sections should now display correctly!</li>
+            </ul>
+        </div>
+
+        <div class="info">
+            <strong>📝 What gets cleared:</strong>
+            <ul>
+                <li><code>students</code> - Student list cache</li>
+                <li><code>users</code> - User data cache</li>
+                <li><code>studentElectives</code> - Student selections cache</li>
+            </ul>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function clearCache() {
+            try {
+                // Clear specific localStorage items
+                const keysToRemove = ['students', 'users', 'studentElectives'];
+                keysToRemove.forEach(key => {
+                    if (localStorage.getItem(key)) {
+                        localStorage.removeItem(key);
+                        console.log(`✅ Cleared: ${key}`);
+                    }
+                });
+
+                // Show success message
+                document.getElementById('cache-status').innerHTML = `
+                    <div class="success-msg" style="margin-top: 10px;">
+                        <strong>✅ Success!</strong><br>
+                        Cleared cached student data. Now reload the page or refresh the admin panel.
+                    </div>
+                `;
+
+                // Log to console
+                console.log('✅ All student cache cleared successfully');
+                
+            } catch (error) {
+                document.getElementById('cache-status').innerHTML = `
+                    <div class="warning" style="margin-top: 10px;">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+                console.error('Error clearing cache:', error);
+            }
+        }
+
+        // Show current cache status on load
+        window.addEventListener('load', () => {
+            const students = localStorage.getItem('students');
+            const users = localStorage.getItem('users');
+            
+            if (students || users) {
+                const message = `
+                    <div class="warning">
+                        <strong>⚠️ Cached Data Found:</strong><br>
+                        Your browser has cached student data. Click "Clear Student Cache" above to remove it.
+                    </div>
+                `;
+                document.getElementById('result').innerHTML = message;
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="success-msg">
+                        <strong>✅ No Cache Found:</strong><br>
+                        Your browser cache is clean. If you're still seeing issues, make sure the backend server is running.
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

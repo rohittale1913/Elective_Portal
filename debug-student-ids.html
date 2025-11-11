@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Student IDs</title>
+</head>
+<body>
+    <h1>Debug Student ID Matching</h1>
+    <button onclick="debugIDs()">Debug IDs</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function debugIDs() {
+            const output = document.getElementById('output');
+            output.textContent = 'Debugging...\n\n';
+            
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    output.textContent += '❌ No auth token\n';
+                    return;
+                }
+                
+                // 1. Get users/students
+                output.textContent += '1️⃣ Fetching users...\n';
+                const usersRes = await fetch('http://localhost:5000/api/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const usersData = await usersRes.json();
+                const students = usersData.users.filter(u => u.role === 'student');
+                output.textContent += `   Found ${students.length} students\n\n`;
+                
+                // 2. Get selections
+                output.textContent += '2️⃣ Fetching selections...\n';
+                const selectionsRes = await fetch('http://localhost:5000/api/student/all-selections', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const selectionsData = await selectionsRes.json();
+                output.textContent += `   Found ${selectionsData.selections?.length || 0} selections\n\n`;
+                
+                // 3. Compare IDs
+                output.textContent += '3️⃣ Comparing IDs:\n\n';
+                students.slice(0, 3).forEach((student, i) => {
+                    output.textContent += `Student ${i + 1}: ${student.name}\n`;
+                    output.textContent += `   Student ID: "${student.id}"\n`;
+                    output.textContent += `   Student ID type: ${typeof student.id}\n`;
+                    
+                    // Find matching selections
+                    const matches = selectionsData.selections?.filter(s => {
+                        output.textContent += `   Checking selection.studentId="${s.studentId}" (${typeof s.studentId})\n`;
+                        return s.studentId === student.id || 
+                               String(s.studentId) === String(student.id);
+                    }) || [];
+                    
+                    output.textContent += `   ✅ Matching selections: ${matches.length}\n`;
+                    if (matches.length > 0) {
+                        output.textContent += `   First match: ${JSON.stringify(matches[0])}\n`;
+                    }
+                    output.textContent += '\n';
+                });
+                
+                // 4. Show all unique student IDs from selections
+                output.textContent += '\n4️⃣ All student IDs in selections:\n';
+                const uniqueStudentIds = [...new Set(selectionsData.selections?.map(s => s.studentId) || [])];
+                uniqueStudentIds.slice(0, 5).forEach(id => {
+                    output.textContent += `   - "${id}" (${typeof id})\n`;
+                });
+                
+                // 5. Show all user IDs
+                output.textContent += '\n5️⃣ All student IDs in users:\n';
+                students.slice(0, 5).forEach(s => {
+                    output.textContent += `   - "${s.id}" (${typeof s.id})\n`;
+                });
+                
+            } catch (error) {
+                output.textContent += `\n❌ Error: ${error.message}\n${error.stack}`;
+            }
+        }
+    </script>
+</body>
+</html>

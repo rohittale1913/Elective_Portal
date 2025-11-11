@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Check Data Status</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .good { color: #4CAF50; font-weight: bold; }
+        .bad { color: #f44336; font-weight: bold; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+        button { background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Data Status Check</h1>
+    
+    <div class="card">
+        <h2>localStorage Data:</h2>
+        <div id="status"></div>
+    </div>
+
+    <div class="card">
+        <h2>Actions:</h2>
+        <button onclick="location.reload()">🔄 Refresh</button>
+        <button onclick="window.location.href='http://localhost:5173'">🏠 Go to App</button>
+        <button onclick="window.location.href='http://localhost:5173/admin/students'">👥 Admin Students</button>
+    </div>
+
+    <script>
+        function checkData() {
+            let html = '<table border="1" cellpadding="10" style="width:100%; border-collapse: collapse;">';
+            html += '<tr><th>Key</th><th>Status</th><th>Count/Length</th><th>Sample</th></tr>';
+
+            const keys = ['authToken', 'userRole', 'userId', 'students', 'studentElectives', 'electives', 'users', 'tracks'];
+            
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                let status, count, sample;
+                
+                if (!value) {
+                    status = '<span class="bad">❌ MISSING</span>';
+                    count = '0';
+                    sample = 'N/A';
+                } else if (key === 'authToken' || key === 'userRole' || key === 'userId') {
+                    status = '<span class="good">✅ EXISTS</span>';
+                    count = value.length + ' chars';
+                    sample = value.substring(0, 30) + '...';
+                } else {
+                    try {
+                        const parsed = JSON.parse(value);
+                        if (Array.isArray(parsed)) {
+                            status = '<span class="good">✅ EXISTS</span>';
+                            count = parsed.length + ' items';
+                            sample = parsed.length > 0 ? JSON.stringify(parsed[0]).substring(0, 100) + '...' : 'Empty array';
+                        } else {
+                            status = '<span class="good">✅ EXISTS</span>';
+                            count = 'Object';
+                            sample = JSON.stringify(parsed).substring(0, 100) + '...';
+                        }
+                    } catch (e) {
+                        status = '<span class="bad">❌ INVALID JSON</span>';
+                        count = value.length + ' chars';
+                        sample = value.substring(0, 50) + '...';
+                    }
+                }
+                
+                html += `<tr><td><strong>${key}</strong></td><td>${status}</td><td>${count}</td><td style="font-family: monospace; font-size: 11px;">${sample}</td></tr>`;
+            });
+
+            html += '</table>';
+
+            // Summary
+            html += '<h3>Summary:</h3><ul>';
+            const hasToken = localStorage.getItem('authToken');
+            const students = localStorage.getItem('students');
+            const studentElectives = localStorage.getItem('studentElectives');
+            const electives = localStorage.getItem('electives');
+
+            if (hasToken) {
+                html += '<li class="good">✅ Logged in (has auth token)</li>';
+            } else {
+                html += '<li class="bad">❌ Not logged in (no auth token)</li>';
+            }
+
+            if (students) {
+                const parsed = JSON.parse(students);
+                html += `<li class="good">✅ ${parsed.length} students loaded</li>`;
+            } else {
+                html += '<li class="bad">❌ No students data</li>';
+            }
+
+            if (studentElectives) {
+                const parsed = JSON.parse(studentElectives);
+                html += `<li class="good">✅ ${parsed.length} student elective selections loaded</li>`;
+            } else {
+                html += '<li class="bad">❌ No student electives data</li>';
+            }
+
+            if (electives) {
+                const parsed = JSON.parse(electives);
+                html += `<li class="good">✅ ${parsed.length} electives loaded</li>`;
+            } else {
+                html += '<li class="bad">❌ No electives data</li>';
+            }
+
+            html += '</ul>';
+
+            // Recommendation
+            if (!hasToken || !students || !studentElectives) {
+                html += '<div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin-top: 20px;">';
+                html += '<h3>⚠️ Recommendation:</h3>';
+                html += '<p>Open <a href="http://localhost:5000/quick-fix-students.html" style="color: #2196F3;">quick-fix-students.html</a> and click "FIX EVERYTHING NOW"</p>';
+                html += '</div>';
+            } else {
+                html += '<div style="background: #d4edda; padding: 15px; border-radius: 4px; margin-top: 20px;">';
+                html += '<h3>✅ All Good!</h3>';
+                html += '<p>All required data is present. Go to <a href="http://localhost:5173/admin/students">Admin Students page</a></p>';
+                html += '</div>';
+            }
+
+            document.getElementById('status').innerHTML = html;
+        }
+
+        checkData();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(checkData, 5000);
+    </script>
+</body>
+</html>

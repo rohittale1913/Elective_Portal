@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🚨 CLEAR CACHE & TEST SECTIONS 🚨</title>
+  <style>
+    body { 
+      font-family: monospace; 
+      padding: 20px; 
+      background: #1e1e1e; 
+      color: #00ff00;
+      line-height: 1.6;
+    }
+    h1 { color: #ff6b6b; }
+    button { 
+      padding: 15px 30px; 
+      font-size: 18px; 
+      margin: 10px; 
+      cursor: pointer;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover { background: #45a049; }
+    .result { 
+      background: #2d2d2d; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-left: 4px solid #00ff00;
+      white-space: pre-wrap;
+    }
+    .error { border-left-color: #ff6b6b; color: #ff6b6b; }
+    .success { border-left-color: #4CAF50; color: #4CAF50; }
+    .warning { border-left-color: #ffa500; color: #ffa500; }
+  </style>
+</head>
+<body>
+  <h1>🚨 SECTION FIX - CLEAR ALL CACHE 🚨</h1>
+  
+  <div style="background: #2d2d2d; padding: 20px; margin: 20px 0; border: 2px solid #ff6b6b;">
+    <h2 style="color: #ffa500;">⚠️ THE PROBLEM:</h2>
+    <p>Your browser has OLD student data cached in localStorage with sections = "A" (default)!</p>
+    <p><strong>This is overriding the correct data from MongoDB!</strong></p>
+  </div>
+
+  <h2>STEP 1: Clear ALL Cached Data</h2>
+  <button onclick="clearAllCache()">🗑️ CLEAR EVERYTHING (Click First!)</button>
+  <div id="clearResult"></div>
+
+  <h2>STEP 2: Test API Response</h2>
+  <button onclick="testAPI()">🧪 Test /api/users Endpoint</button>
+  <div id="apiResult"></div>
+
+  <h2>STEP 3: Reload Application</h2>
+  <button onclick="reloadApp()">🔄 Reload App (After clearing cache)</button>
+
+  <hr style="margin: 40px 0; border-color: #444;">
+
+  <h2>📋 Manual Instructions:</h2>
+  <div class="result warning">
+After clicking "CLEAR EVERYTHING":
+
+1. Close this tab
+2. Close ALL browser tabs for localhost:5173
+3. Press Ctrl+Shift+Delete in your browser
+4. Select:
+   ✅ Cookies and other site data
+   ✅ Cached images and files
+   ✅ Cached data (if option exists)
+5. Time range: "All time"
+6. Click "Clear data"
+7. Open NEW tab → go to http://localhost:5173
+8. Login as admin
+9. Go to Students page
+10. Press Ctrl+F5 (hard refresh)
+
+Sections should now show A, B, C correctly!
+  </div>
+
+  <script>
+    function clearAllCache() {
+      const result = document.getElementById('clearResult');
+      result.className = 'result';
+      result.innerHTML = '🔄 Clearing cache...\n\n';
+      
+      try {
+        // Clear localStorage
+        const itemsCleared = [];
+        
+        if (localStorage.getItem('students')) {
+          const oldStudents = JSON.parse(localStorage.getItem('students'));
+          result.innerHTML += `📦 Found OLD students data: ${oldStudents.length} students\n`;
+          result.innerHTML += `   First student section: "${oldStudents[0]?.section}"\n\n`;
+          itemsCleared.push('students');
+        }
+        
+        if (localStorage.getItem('tracks')) itemsCleared.push('tracks');
+        if (localStorage.getItem('syllabi')) itemsCleared.push('syllabi');
+        if (localStorage.getItem('electives')) itemsCleared.push('electives');
+        if (localStorage.getItem('authToken')) itemsCleared.push('authToken');
+        if (localStorage.getItem('user')) itemsCleared.push('user');
+        
+        // Clear everything
+        localStorage.clear();
+        
+        result.innerHTML += `✅ Cleared localStorage items: ${itemsCleared.join(', ')}\n\n`;
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        result.innerHTML += `✅ Cleared sessionStorage\n\n`;
+        
+        // Clear cookies (if accessible)
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        result.innerHTML += `✅ Cleared cookies\n\n`;
+        
+        result.innerHTML += `🎉 SUCCESS! All cache cleared!\n\n`;
+        result.innerHTML += `⚠️ NOW DO THIS:\n`;
+        result.innerHTML += `   1. Close this tab\n`;
+        result.innerHTML += `   2. Close ALL localhost:5173 tabs\n`;
+        result.innerHTML += `   3. Press Ctrl+Shift+Delete\n`;
+        result.innerHTML += `   4. Clear browser cache\n`;
+        result.innerHTML += `   5. Open NEW tab → localhost:5173\n`;
+        result.innerHTML += `   6. Login and check sections!\n`;
+        
+        result.className = 'result success';
+        
+      } catch (error) {
+        result.innerHTML += `❌ Error: ${error.message}\n`;
+        result.className = 'result error';
+      }
+    }
+    
+    async function testAPI() {
+      const result = document.getElementById('apiResult');
+      result.className = 'result';
+      result.innerHTML = '🧪 Testing API...\n\n';
+      
+      try {
+        // First check if we have a token
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          result.innerHTML += '❌ No auth token found!\n';
+          result.innerHTML += 'You need to login first.\n\n';
+          result.innerHTML += 'Quick fix:\n';
+          result.innerHTML += '1. Go to http://localhost:5173\n';
+          result.innerHTML += '2. Login as admin\n';
+          result.innerHTML += '3. Come back and click this button again\n';
+          result.className = 'result error';
+          return;
+        }
+        
+        result.innerHTML += '✅ Found auth token\n\n';
+        
+        const response = await fetch('http://localhost:5000/api/users', {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          result.innerHTML += `❌ API Error: ${response.status} ${response.statusText}\n`;
+          result.className = 'result error';
+          return;
+        }
+        
+        const data = await response.json();
+        result.innerHTML += `✅ API Response received!\n\n`;
+        result.innerHTML += `📊 Total users: ${data.users?.length || 0}\n\n`;
+        
+        if (!data.users || data.users.length === 0) {
+          result.innerHTML += `⚠️ No users found in response!\n`;
+          result.className = 'result warning';
+          return;
+        }
+        
+        const students = data.users.filter(u => u.role === 'student');
+        result.innerHTML += `👥 Total students: ${students.length}\n\n`;
+        
+        // Check first 5 students
+        result.innerHTML += `📋 First 5 students:\n\n`;
+        students.slice(0, 5).forEach((s, i) => {
+          const sectionStatus = s.section ? '✅' : '❌';
+          result.innerHTML += `${i + 1}. ${s.name}\n`;
+          result.innerHTML += `   Email: ${s.email}\n`;
+          result.innerHTML += `   Section: ${sectionStatus} "${s.section || 'MISSING'}"\n`;
+          result.innerHTML += `   RollNo: ${s.rollNumber || 'N/A'}\n\n`;
+        });
+        
+        // Section distribution
+        const sectionCounts = {};
+        let missingSections = 0;
+        
+        students.forEach(s => {
+          if (s.section) {
+            sectionCounts[s.section] = (sectionCounts[s.section] || 0) + 1;
+          } else {
+            missingSections++;
+          }
+        });
+        
+        result.innerHTML += `📈 Section Distribution:\n`;
+        Object.entries(sectionCounts).forEach(([section, count]) => {
+          result.innerHTML += `   Section ${section}: ${count} students\n`;
+        });
+        if (missingSections > 0) {
+          result.innerHTML += `   ❌ Missing: ${missingSections} students\n`;
+        }
+        result.innerHTML += `\n`;
+        
+        if (missingSections === 0 && Object.keys(sectionCounts).length > 0) {
+          result.innerHTML += `🎉 SUCCESS! API is returning section data!\n\n`;
+          result.innerHTML += `✅ The backend is working correctly!\n`;
+          result.innerHTML += `⚠️ If you still see "Not Assigned" in the UI:\n`;
+          result.innerHTML += `   → The problem is browser/localStorage cache\n`;
+          result.innerHTML += `   → Click "CLEAR EVERYTHING" button above\n`;
+          result.innerHTML += `   → Then refresh the application\n`;
+          result.className = 'result success';
+        } else {
+          result.innerHTML += `⚠️ WARNING: Some students missing section data!\n`;
+          result.className = 'result warning';
+        }
+        
+      } catch (error) {
+        result.innerHTML += `❌ Error: ${error.message}\n`;
+        result.className = 'result error';
+      }
+    }
+    
+    function reloadApp() {
+      alert('Closing this tab and opening fresh app...');
+      window.open('http://localhost:5173', '_blank');
+      window.close();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DIRECT API TEST</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #fff; }
+        pre { background: #2d2d2d; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        .warning { color: #fbbf24; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 10px 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 DIRECT API RAW DATA TEST</h1>
+    
+    <h2>Step 1: Get Token</h2>
+    <button onclick="getToken()">Get Auth Token from localStorage</button>
+    <div id="token-result"></div>
+
+    <h2>Step 2: Call API Directly</h2>
+    <button onclick="testAPI()">Call /api/users</button>
+    <div id="api-result"></div>
+
+    <h2>Step 3: Check localStorage</h2>
+    <button onclick="checkLocalStorage()">Check Cached Students</button>
+    <div id="storage-result"></div>
+
+    <script>
+        let authToken = '';
+
+        function getToken() {
+            authToken = localStorage.getItem('authToken');
+            const result = document.getElementById('token-result');
+            if (authToken) {
+                result.innerHTML = `<pre class="success">✅ Token found:\n${authToken.substring(0, 50)}...</pre>`;
+            } else {
+                result.innerHTML = `<pre class="error">❌ No token! Login first at http://localhost:5173</pre>`;
+            }
+        }
+
+        async function testAPI() {
+            const result = document.getElementById('api-result');
+            
+            if (!authToken) {
+                result.innerHTML = `<pre class="error">❌ Get token first!</pre>`;
+                return;
+            }
+
+            result.innerHTML = '<pre>⏳ Calling API...</pre>';
+
+            try {
+                const response = await fetch('http://localhost:5000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    result.innerHTML = `<pre class="error">❌ API Error: ${response.status}</pre>`;
+                    return;
+                }
+
+                const data = await response.json();
+                const students = data.users?.filter(u => u.role === 'student') || [];
+
+                let html = '<pre class="success">✅ API Response:\n\n';
+                html += `Total users: ${data.users?.length}\n`;
+                html += `Students: ${students.length}\n\n`;
+                html += '=== STUDENTS WITH SECTIONS ===\n\n';
+
+                students.forEach((s, i) => {
+                    const sectionDisplay = s.section ? `✅ "${s.section}"` : `❌ MISSING!`;
+                    html += `${i + 1}. ${s.name}\n`;
+                    html += `   Section: ${sectionDisplay}\n`;
+                    html += `   Email: ${s.email}\n`;
+                    html += `   Roll: ${s.rollNumber}\n\n`;
+                });
+
+                html += '\n=== RAW FIRST STUDENT JSON ===\n\n';
+                html += JSON.stringify(students[0], null, 2);
+                html += '</pre>';
+
+                result.innerHTML = html;
+
+            } catch (error) {
+                result.innerHTML = `<pre class="error">❌ Error: ${error.message}</pre>`;
+            }
+        }
+
+        function checkLocalStorage() {
+            const result = document.getElementById('storage-result');
+            
+            const cached = localStorage.getItem('students');
+            if (!cached) {
+                result.innerHTML = '<pre class="warning">⚠️  No students in localStorage</pre>';
+                return;
+            }
+
+            try {
+                const students = JSON.parse(cached);
+                
+                let html = '<pre class="success">✅ LocalStorage Data:\n\n';
+                html += `Total students: ${students.length}\n\n`;
+                html += '=== CACHED STUDENTS ===\n\n';
+
+                students.slice(0, 5).forEach((s, i) => {
+                    const sectionDisplay = s.section ? `✅ "${s.section}"` : `❌ UNDEFINED!`;
+                    html += `${i + 1}. ${s.name}\n`;
+                    html += `   Section: ${sectionDisplay}\n`;
+                    html += `   Email: ${s.email}\n\n`;
+                });
+
+                html += '\n=== RAW FIRST CACHED STUDENT ===\n\n';
+                html += JSON.stringify(students[0], null, 2);
+                html += '</pre>';
+
+                html += '<br><button onclick="clearAndReload()">🗑️ Clear Cache & Reload</button>';
+
+                result.innerHTML = html;
+
+            } catch (error) {
+                result.innerHTML = `<pre class="error">❌ Error parsing: ${error.message}</pre>`;
+            }
+        }
+
+        function clearAndReload() {
+            if (confirm('Clear ALL cache and reload?')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Auto-load token on page load
+        window.onload = () => {
+            getToken();
+        };
+    </script>
+
+    <hr>
+    <h3>📝 Instructions:</h3>
+    <ol>
+        <li>Make sure you're logged in to the app</li>
+        <li>Click "Get Auth Token" - should show green ✅</li>
+        <li>Click "Call /api/users" - see RAW API data</li>
+        <li>Click "Check Cached Students" - see what's in localStorage</li>
+        <li>Compare the two - they should MATCH!</li>
+    </ol>
+</body>
+</html>
